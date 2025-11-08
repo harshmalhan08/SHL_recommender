@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessment Recommender</title>
+    <style>
+        /* --- Base & Theme --- */
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2a2a2a;
+            --bg-tertiary: #333;
+            --border-color: #444;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --accent-primary: #007acc;
+            --accent-hover: #005f99;
+            --status-ok: #28a745;
+            --status-error: #dc3545;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* --- Layout --- */
+        .header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        #api-status {
+            font-size: 0.9rem;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        #api-status.ok {
+            background-color: var(--status-ok);
+            color: white;
+        }
+        #api-status.error {
+            background-color: var(--status-error);
+            color: white;
+        }
+        #api-status.loading {
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+
+        main {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        .container {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        h2 {
+            margin-top: 0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        /* --- Forms & Controls --- */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        textarea,
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box; /* Fixes padding issue */
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 1rem;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 150px;
+        }
+
+        button {
+            background-color: var(--accent-primary);
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        button:disabled {
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .tab-button {
+            background: none;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-button.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--accent-primary);
+        }
+
+        .tab-panel {
+            display: none;
+        }
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* --- Results & Feedback --- */
+        #results-container {
+            margin-top: 20px;
+        }
+
+        #loading-spinner {
+            display: none; /* Hidden by default */
+            text-align: center;
+            padding: 20px;
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+        }
+
+        #error-message {
+            display: none; /* Hidden by default */
+            color: var(--status-error);
+            background-color: rgba(220, 53, 69, 0.1);
+            border: 1px solid var(--status-error);
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        .results-header {
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .query-echo {
+            font-family: monospace;
+            background-color: var(--bg-tertiary);
+            padding: 3px 6px;
+            border-radius: 4px;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: inline-block;
+        }
+
+        .result-card {
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .result-card h4 {
+            margin: 0 0 10px 0;
+            color: var(--text-primary);
+        }
+
+        .result-card a {
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .result-card a:hover {
+            text-decoration: underline;
+        }
+
+        .result-score {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--accent-primary);
+        }
+
+        .result-rationale {
+            font-style: italic;
+            color: var(--text-secondary);
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+        
+        #batch-results-container {
+            display: none;
+            color: var(--status-ok);
+            background-color: rgba(40, 167, 69, 0.1);
+            border: 1px solid var(--status-ok);
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>Assessment Recommender</h1>
+        <div id="api-status" class="loading">Connecting...</div>
+    </header>
+
+    <main>
+        <div class="container">
+            <h2>Recommend Assessments</h2>
+            <div class="tabs">
+                <button class="tab-button active" data-tab="query-panel">By Text</button>
+                <button class="tab-button" data-tab="url-panel">By URL</button>
+            </div>
+
+            <div id="query-panel" class="tab-panel active">
+                <div class="form-group">
+                    <label for="query-text">Query Text (e.g., Job Description)</label>
+                    <textarea id="query-text" placeholder="Paste your query here..."></textarea>
+                </div>
+            </div>
+
+            <div id="url-panel" class="tab-panel">
+                <div class="form-group">
+                    <label for="query-url">Query URL</label>
+                    <input type="text" id="query-url" placeholder="https://example.com/job-posting">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="recommend-k">Number of Recommendations (K)</label>
+                <input type="number" id="recommend-k" value="10" min="1" max="50">
+            </div>
+
+            <button id="submit-recommend">Get Recommendations</button>
+        </div>
+
+        <div class="container">
+            <h2>Batch Export</h2>
+            <div class="form-group">
+                <label for="batch-queries">Queries (One per line)</label>
+                <textarea id="batch-queries" placeholder="Query 1...\nQuery 2...\nQuery 3..."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="batch-k">Number of Recommendations (K) per Query</label>
+                <input type="number" id="batch-k" value="10" min="1" max="50">
+            </div>
+            <button id="submit-batch">Start Batch Export</button>
+        </div>
+
+        <div id="results-container">
+            <div id="loading-spinner">Loading...</div>
+            <div id="error-message"></div>
+            <div id="batch-results-container"></div>
+            <div id="recommend-results-container">
+                </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Configuration ---
+            const API_BASE_URL = 'http://localhost:8000'; // Your FastAPI backend URL
+
+            // --- DOM Elements ---
+            const statusEl = document.getElementById('api-status');
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanels = document.querySelectorAll('.tab-panel');
+
+            // Recommend elements
+            const recommendBtn = document.getElementById('submit-recommend');
+            const queryTextEl = document.getElementById('query-text');
+            const queryUrlEl = document.getElementById('query-url');
+            const recommendKEl = document.getElementById('recommend-k');
+            
+            // Batch elements
+            const batchBtn = document.getElementById('submit-batch');
+            const batchQueriesEl = document.getElementById('batch-queries');
+            const batchKEl = document.getElementById('batch-k');
+
+            // Feedback elements
+            const loadingEl = document.getElementById('loading-spinner');
+            const errorEl = document.getElementById('error-message');
+            const recommendResultsContainer = document.getElementById('recommend-results-container');
+            const batchResultsContainer = document.getElementById('batch-results-container');
+
+            let activeTab = 'query-panel'; // Default active tab
+
+            // --- Health Check ---
+            const checkHealth = async () => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/health`);
+                    if (!response.ok) throw new Error('Backend not ready');
+                    const data = await response.json();
+                    statusEl.textContent = `Connected (Catalog: ${data.catalog_size})`;
+                    statusEl.className = 'ok';
+                } catch (error) {
+                    statusEl.textContent = 'API Disconnected';
+                    statusEl.className = 'error';
+                    console.error('Health check failed:', error);
+                }
+            };
+
+            // --- Tab Switching ---
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Deactivate all
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabPanels.forEach(panel => panel.classList.remove('active'));
+
+                    // Activate clicked
+                    button.classList.add('active');
+                    activeTab = button.dataset.tab;
+                    document.getElementById(activeTab).classList.add('active');
+                });
+            });
+
+            // --- Helper: Reset UI State ---
+            const resetUI = () => {
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'none';
+                recommendResultsContainer.innerHTML = '';
+                batchResultsContainer.style.display = 'none';
+                recommendBtn.disabled = false;
+                batchBtn.disabled = false;
+            };
+
+            // --- Helper: Display Error ---
+            const displayError = (message) => {
+                errorEl.textContent = `Error: ${message}`;
+                errorEl.style.display = 'block';
+            };
+
+            // --- API Call: Recommend ---
+            const handleRecommend = async () => {
+                resetUI();
+                loadingEl.style.display = 'block';
+                recommendBtn.disabled = true;
+
+                let requestBody = {
+                    k: parseInt(recommendKEl.value, 10) || 10
+                };
+
+                if (activeTab === 'query-panel') {
+                    requestBody.query = queryTextEl.value;
+                } else {
+                    requestBody.url = queryUrlEl.value;
+                }
+
+                if (!requestBody.query && !requestBody.url) {
+                    resetUI();
+                    displayError('Please provide a query or a URL.');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/recommend`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.detail || 'Unknown API error');
+                    }
+                    displayRecommendResults(data);
+
+                } catch (error) {
+                    displayError(error.message);
+                } finally {
+                    loadingEl.style.display = 'none';
+                    recommendBtn.disabled = false;
+                }
+            };
+
+            // --- API Call: Batch Export ---
+            const handleBatchExport = async () => {
+                resetUI();
+                loadingEl.style.display = 'block';
+                batchBtn.disabled = true;
+
+                const queries = batchQueriesEl.value.split('\n').filter(q => q.trim() !== '');
+                if (queries.length === 0) {
+                    resetUI();
+                    displayError('Please provide at least one query for batch export.');
+                    return;
+                }
+
+                const requestBody = {
+                    queries: queries,
+                    k: parseInt(batchKEl.value, 10) || 10
+                };
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/batch_export`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.detail || 'Unknown API error');
+                    }
+                    displayBatchResults(data);
+
+                } catch (error) {
+                    displayError(error.message);
+                } finally {
+                    loadingEl.style.display = 'none';
+                    batchBtn.disabled = false;
+                }
+            };
+
+            // --- Display Results ---
+            const displayRecommendResults = (data) => {
+                recommendResultsContainer.innerHTML = ''; // Clear previous
+                
+                let queryHtml = '';
+                if (data.query.startsWith('http')) {
+                    queryHtml = `<a href="${data.query}" target="_blank" rel="noopener noreferrer">${data.query}</a>`;
+                } else {
+                    const shortQuery = data.query.length > 100 ? data.query.substring(0, 100) + '...' : data.query;
+                    queryHtml = `<span class="query-echo" title="${data.query}">${shortQuery}</span>`;
+                }
+
+                const header = document.createElement('h2');
+                header.className = 'results-header';
+                header.innerHTML = `Recommendations for ${queryHtml}`;
+                recommendResultsContainer.appendChild(header);
+
+                if (!data.predictions || data.predictions.length === 0) {
+                    recommendResultsContainer.innerHTML += '<p>No recommendations found.</p>';
+                    return;
+                }
+
+                data.predictions.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'result-card';
+                    
+                    const score = (item.score * 100).toFixed(1);
+                    const rationale = item.rationale ? `<div class="result-rationale"><b>Rationale:</b> ${item.rationale}</div>` : '';
+
+                    card.innerHTML = `
+                        <span class="result-score">${score}%</span>
+                        <h4>${item.assessment_name}</h4>
+                        <a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.url}</a>
+                        ${rationale}
+                    `;
+                    recommendResultsContainer.appendChild(card);
+                });
+            };
+
+            const displayBatchResults = (data) => {
+                batchResultsContainer.innerHTML = `
+                    <strong>Success!</strong> ${data.rows} predictions exported.
+                    <br>
+                    File saved on server at: <code>${data.predictions_csv}</code>
+                `;
+                batchResultsContainer.style.display = 'block';
+            };
+
+            // --- Event Listeners ---
+            recommendBtn.addEventListener('click', handleRecommend);
+            batchBtn.addEventListener('click', handleBatchExport);
+
+            // --- Initial Load ---
+            checkHealth();
+        });
+    </script>
+
+</body>
+</html>
