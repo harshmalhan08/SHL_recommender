@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: SHL_recommender
+    env: python
+    repo: https://github.com/harshmalhan08/SHL_recommender.git
+    branch: main
+    startCommand: uvicorn api_app:app --host 0.0.0.0 --port $PORT
+staticSites:
+  - name: shl-genai-ui
+    repo: https://github.com/harshmalhan08/SHL_recommender.git
+    branch: main
+    publishPath: frontend
